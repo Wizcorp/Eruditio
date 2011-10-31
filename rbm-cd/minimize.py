@@ -41,7 +41,7 @@ Matlab-function minimize.m
 
 from numpy import dot, isinf, isnan, any, sqrt, isreal, real, nan, inf
 
-def minimize(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, verbose=True):
+def minimize(X, f, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, verbose=True):
     INT = 0.1;# don't reevaluate within 0.1 of the limit of the current bracket
     EXT = 3.0;              # extrapolate maximum 3 times the current step-size
     MAX = 20;                     # max 20 function evaluations per line search
@@ -59,24 +59,23 @@ def minimize(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.
     
     if maxnumlinesearch == None:
         if maxnumfuneval == None:
-            raise "Specify maxnumlinesearch or maxnumfuneval"
+            raise Exception("Specify maxnumlinesearch or maxnumfuneval")
         else:
             S = 'Function evaluation'
             length = maxnumfuneval
     else:
         if maxnumfuneval != None:
-            raise "Specify either maxnumlinesearch or maxnumfuneval (not both)"
+            raise Exception("Specify either maxnumlinesearch or maxnumfuneval (not both)")
         else: 
             S = 'Linesearch'
             length = maxnumlinesearch
 
     i = 0                                         # zero the run length counter
     ls_failed = 0                          # no previous line search has failed
-    f0 = f(X, *args)                          # get function value and gradient
-    df0 = grad(X, *args)  
+    (f0, df0) = f(X, *args)                          # get function value and gradient
     fX = [f0]
     i = i + (length<0)                                         # count epochs?!
-    s = -df0; d0 = -dot(s,s)    # initial search direction (steepest) and slope
+    s = -df0; d0 = -dot(s.T,s)    # initial search direction (steepest) and slope
     x3 = red/(1.0-d0)                             # initial step is red/(|s|+1)
 
     while i < abs(length):                                 # while not finished
@@ -93,8 +92,7 @@ def minimize(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.
             while (not success) and (M > 0):
                 try:
                     M = M - 1; i = i + (length<0)              # count epochs?!
-                    f3 = f(X+x3*s, *args)
-                    df3 = grad(X+x3*s, *args)
+                    (f3, df3) = f(X+x3*s, *args)
                     if isnan(f3) or isinf(f3) or any(isnan(df3)+isinf(df3)):
                         print "error"
                         return
@@ -103,7 +101,7 @@ def minimize(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.
                     x3 = (x2+x3)/2                       # bisect and try again
             if f3 < F0:
                 X0 = X+x3*s; F0 = f3; dF0 = df3   # keep best values
-            d3 = dot(df3,s)                                         # new slope
+            d3 = dot(df3.T,s)                                         # new slope
             if d3 > SIG*d0 or f3 > f0+x3*RHO*d0 or M == 0:  
                                                    # are we done extrapolating?
                 break
@@ -146,29 +144,28 @@ def minimize(X, f, grad, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.
                 x3 = (x2+x4)/2      # if we had a numerical problem then bisect
             x3 = max(min(x3, x4-INT*(x4-x2)),x2+INT*(x4-x2))  
                                                        # don't accept too close
-            f3 = f(X+x3*s, *args)
-            df3 = grad(X+x3*s, *args)
+            (f3, df3) = f(X+x3*s, *args)
             if f3 < F0:
                 X0 = X+x3*s; F0 = f3; dF0 = df3              # keep best values
             M = M - 1; i = i + (length<0)                      # count epochs?!
-            d3 = dot(df3,s)                                         # new slope
+            d3 = dot(df3.T,s)                                         # new slope
 
         if abs(d3) < -SIG*d0 and f3 < f0+x3*RHO*d0:  # if line search succeeded
             X = X+x3*s; f0 = f3; fX.append(f0)               # update variables
             if verbose: print '%s %6i;  Value %4.6e\r' % (S, i, f0)
-            s = (dot(df3,df3)-dot(df0,df3))/dot(df0,df0)*s - df3
+            s = (dot(df3.T,df3)-dot(df0.T,df3))/dot(df0.T,df0)*s - df3
                                                   # Polack-Ribiere CG direction
             df0 = df3                                        # swap derivatives
-            d3 = d0; d0 = dot(df0,s)
+            d3 = d0; d0 = dot(df0.T,s)
             if d0 > 0:                             # new slope must be negative
-                s = -df0; d0 = -dot(s,s)     # otherwise use steepest direction
+                s = -df0; d0 = -dot(s.T,s)     # otherwise use steepest direction
             x3 = x3 * min(RATIO, d3/(d0-SMALL))     # slope ratio but max RATIO
             ls_failed = 0                       # this line search did not fail
         else:
             X = X0; f0 = F0; df0 = dF0              # restore best point so far
             if ls_failed or (i>abs(length)):# line search failed twice in a row
                 break                    # or we ran out of time, so we give up
-            s = -df0; d0 = -dot(s,s)                             # try steepest
+            s = -df0; d0 = -dot(s.T,s)                             # try steepest
             x3 = 1/(1-d0)                     
             ls_failed = 1                             # this line search failed
     if verbose: print "\n"

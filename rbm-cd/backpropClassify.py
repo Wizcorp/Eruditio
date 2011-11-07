@@ -31,13 +31,13 @@ import NeuralNetwork
 #### START:  Load the MNIST training and testing data
 sys.stdout.write("Loading training data...")
 sys.stdout.flush()
-trainData = sio.loadmat('../commonData/trainImagesAndTargets.mat', struct_as_record=True)
+trainData = sio.loadmat('../datasets/MNIST/trainImagesAndTargets.mat', struct_as_record=True)
 sys.stdout.write(" done.\n")
 sys.stdout.flush()
 
 sys.stdout.write("Loading testing data...")
 sys.stdout.flush()
-testData = sio.loadmat('../commonData/testImagesAndTargets.mat', struct_as_record=True)
+testData = sio.loadmat('../datasets/MNIST/testImagesAndTargets.mat', struct_as_record=True)
 sys.stdout.write(" done.\n")
 sys.stdout.flush()
 

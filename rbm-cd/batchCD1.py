@@ -25,7 +25,7 @@ import time
 import numpy as np
 import scipy.io as sio
 
-def batchRBM(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
+def batchCD1(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
     numCases = allInputData.shape[0]
     assert numCases == 60000, "Expecting 60,000 inputs."
     # We will divide the data into 600 batches:
@@ -63,7 +63,7 @@ def batchRBM(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
             except:
                 batchRandCompare = None
 
-            (lDeltaW, lDeltaVB, lDeltaHB, poshidprobs, err) = nn.rbm(whichLayer, inputData, batchRandCompare)
+            (lDeltaW, lDeltaVB, lDeltaHB, poshidprobs, err) = nn.cd1(whichLayer, inputData, batchRandCompare)
             del batchRandCompare
 
             batchHidProbs[start:stop, :] = poshidprobs

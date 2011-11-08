@@ -201,8 +201,8 @@ class LogisticHinton2006:
         self.hB[3] = matrices[7]
 
 
-    # The Restricted Boltzmann Machine:
-    def rbm(self, whichLayer, inputData, randomNumbers = None):
+    # 1-step Constrastive Divergence:
+    def cd1(self, whichLayer, inputData, randomNumbers = None):
 
         #  randomNumbers
         # We can use pre-defined "random" numbers so that repeat runs

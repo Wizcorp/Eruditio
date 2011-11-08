@@ -25,10 +25,8 @@ import numpy as np
 import scipy.io as sio
 
 from flattenUtils import *
-import minimize
-import CG_CLASSIFY_INIT
-import CG_CLASSIFY
-
+import minimize as cg
+from backprop import backprop, backprop_only3
 
 
 class LogisticHinton2006:
@@ -173,7 +171,7 @@ class LogisticHinton2006:
         #### Flatten all of our parameters into a 1-D array
         (VV, Dim) = multiFlatten(( self.W[3], self.hB[3] ))
 
-        (X, fX, iters) = minimize.minimize(VV, CG_CLASSIFY_INIT.CG_CLASSIFY_INIT, (Dim, layer2out, targets), max_iter  )
+        (X, fX, iters) = cg.minimize(VV, backprop_only3, (Dim, layer2out, targets), max_iter  )
         #(X, fX, iters) = minimize.minimize(VV, self.up3cgWrap, (Dim, layer2out, targets), max_iter  )
 
         #### Un-Flatten all of our parameters from the 1-D array
@@ -189,7 +187,7 @@ class LogisticHinton2006:
                                     self.W[2], self.hB[2],
                                     self.W[3], self.hB[3]  ))
 
-        (X, fX, iters) = minimize.minimize(VV, CG_CLASSIFY.CG_CLASSIFY, (Dim, inputData, targets), max_iter  )
+        (X, fX, iters) = cg.minimize(VV, backprop, (Dim, inputData, targets), max_iter  )
 
         #### Un-Flatten all of our parameters from the 1-D array
         matrices = multiUnFlatten(X, Dim)

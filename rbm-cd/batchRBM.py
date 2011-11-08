@@ -47,12 +47,9 @@ def batchRBM(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
     for epoch in xrange(maxepoch):
         tStart = time.time()
         print "epoch ", epoch
-        try:
-            del randCompare # can be huge memory consumption
-        except:
-            pass
-        randCompare = sio.loadmat('%s-randCompare%d.mat' % (baseFileName, epoch+1), 
-                                  struct_as_record=True)['randCompare']
+        #randCompare = sio.loadmat('%s-randCompare%d.mat' % (baseFileName, epoch+1), 
+        #                          struct_as_record=True)['randCompare']
+
         errsum = 0.
         for batch in xrange(numbatches):
             sys.stdout.write("epoch %d batch %d\r" % (epoch, batch))
@@ -61,7 +58,10 @@ def batchRBM(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
             stop = (batch+1) * batchsize
 
             inputData = allInputData[start:stop, :]
-            batchRandCompare = randCompare[batch, :, :]
+            try:
+                batchRandCompare = randCompare[batch, :, :]
+            except:
+                batchRandCompare = None
 
             (lDeltaW, lDeltaVB, lDeltaHB, poshidprobs, err) = nn.rbm(whichLayer, inputData, batchRandCompare)
             del batchRandCompare
@@ -82,8 +82,11 @@ def batchRBM(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
             nn.vB[whichLayer] = nn.vB[whichLayer] + deltaVB
             nn.hB[whichLayer] = nn.hB[whichLayer] + deltaHB
 
+        try:
+            del randCompare # can be huge memory consumption
+        except:
+            pass
 
-        del randCompare
         print "\nepoch %d error %6.1f" % (epoch, errsum)
 
         tEnd = time.time()

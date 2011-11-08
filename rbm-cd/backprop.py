@@ -19,11 +19,39 @@
 # application.  All use of these programs is entirely at the user's own risk.
 
 
-
 import numpy as np
 from flattenUtils import *
 
-def CG_CLASSIFY(VV, Dim, inputs, targets):
+
+def backprop_only3(VV, Dim, inputs, targets):
+
+    #### Un-Flatten all of our parameters from the 1-D array
+    matrices = multiUnFlatten(VV, Dim)
+    W = matrices[0]
+    hB = matrices[1]
+
+    ## This is the last layer of the neural network, in bottom-up, 
+    ## "recognition" mode:
+    nnTargetOut = np.exp(np.dot(inputs, W) + hB)
+
+    # Normalize our outputs into probability distributions:
+    nnTargetOut = nnTargetOut / np.tile(nnTargetOut.sum(1)[:, np.newaxis], (1,10) )
+
+    # We use cross-entropy rather than squared error for our error function:
+    f = -(targets * np.log(nnTargetOut)).sum(0).sum(0)
+
+    classError = nnTargetOut - targets
+
+    ## Flatten the gradients into the same shape as VV:
+    (df, Dim2) = multiFlatten((   np.dot(inputs.T, classError), 
+                                  classError.sum(0)[np.newaxis, :]  ))
+    assert Dim2 == Dim
+
+    return (f, df)
+
+
+
+def backprop(VV, Dim, inputs, targets):
     W = [0]*4  #synaptic weight matrix
     hB = [0]*4  #hidden biases
 
@@ -62,6 +90,10 @@ def CG_CLASSIFY(VV, Dim, inputs, targets):
     deltaW3 = np.dot(layer2out.conj().T, Ix_class)
     deltaHB3 = Ix_class.sum(0)[np.newaxis, :]
 
+    ## For backprop, we take the derivative actF acting on the
+    ## input data.  
+    ## For the Logistic function, the derivative of actF(x) 
+    ## is actF(x) * (1 - actF(x))
     Ix3 = np.dot(Ix_class, W[3].T) * layer2out * (1-layer2out)
     deltaW2 = np.dot(layer1out.T, Ix3)
     deltaHB2 = Ix3.sum(0)[np.newaxis, :]

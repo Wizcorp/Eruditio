@@ -35,6 +35,8 @@ def batchCD1(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
 
     (numvis, numhid) = nn.W[whichLayer].shape
 
+    print "Pretraining Layer %d.  %d visible units, %d hidden units." % (whichLayer, numvis, numhid)
+
     deltaW = np.zeros(nn.W[whichLayer].shape) # Synaptic weight matrix
     deltaHB = np.zeros(nn.hB[whichLayer].shape) # Hidden biases
     deltaVB = np.zeros(nn.vB[whichLayer].shape) # Visible biases
@@ -47,8 +49,9 @@ def batchCD1(nn, whichLayer, allInputData, maxepoch=10, baseFileName=""):
     for epoch in xrange(maxepoch):
         tStart = time.time()
         print "epoch ", epoch
-        #randCompare = sio.loadmat('%s-randCompare%d.mat' % (baseFileName, epoch+1), 
-        #                          struct_as_record=True)['randCompare']
+        if baseFileName:
+            randCompare = sio.loadmat('%s-randCompare%d.mat' % (baseFileName, epoch+1), 
+                                      struct_as_record=True)['randCompare']
 
         errsum = 0.
         for batch in xrange(numbatches):

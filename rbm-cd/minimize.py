@@ -94,7 +94,7 @@ def minimize(X, f, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ver
                     M = M - 1; i = i + (length<0)              # count epochs?!
                     (f3, df3) = f(X+x3*s, *args)
                     if isnan(f3) or isinf(f3) or any(isnan(df3)+isinf(df3)):
-                        print "error"
+                        print "    error"
                         return
                     success = 1
                 except:                    # catch any error which occured in f
@@ -152,7 +152,7 @@ def minimize(X, f, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ver
 
         if abs(d3) < -SIG*d0 and f3 < f0+x3*RHO*d0:  # if line search succeeded
             X = X+x3*s; f0 = f3; fX.append(f0)               # update variables
-            if verbose: print '%s %6i;  Value %4.6e\r' % (S, i, f0)
+            if verbose: print '    %s %6i;  Value %4.6e\r' % (S, i, f0)
             s = (dot(df3.T,df3)-dot(df0.T,df3))/dot(df0.T,df0)*s - df3
                                                   # Polack-Ribiere CG direction
             df0 = df3                                        # swap derivatives
@@ -168,6 +168,6 @@ def minimize(X, f, args, maxnumlinesearch=None, maxnumfuneval=None, red=1.0, ver
             s = -df0; d0 = -dot(s.T,s)                             # try steepest
             x3 = 1/(1-d0)                     
             ls_failed = 1                             # this line search failed
-    if verbose: print "\n"
+    if verbose: print
     return X, fX, i
 

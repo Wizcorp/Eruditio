@@ -30,9 +30,6 @@ from backprop import backprop, backprop_only3
 
 
 class LogisticHinton2006:
-    def loadmat(self, filename):
-        return sio.loadmat( os.path.join(self.baseDir, filename), struct_as_record=True)
-
     def __init__(self):
         ## The "up" methods are for bottom-up recognition.
         self.up = [self.up0, self.up1, self.up2, self.up3]
@@ -66,45 +63,53 @@ class LogisticHinton2006:
         ##                                 the neurons ABOVE are HIDDEN.  
         ##  So Layer2's hidden neurons are the same as Layer3's visible neurons.  
 
+    def initRBM(self):
+        self.W = [ 0.1*np.random.randn(784, 500),
+                   0.1*np.random.randn(500, 500),
+                   0.1*np.random.randn(500, 2000),
+                   0.1*np.random.randn(2000, 10)    ]
 
-    def loadPreRBM(self):
-        self.baseDir = 'nnData'
-        baseName = 'Classify-randomInit-Layer%d.mat'
-        self.loadNN(baseName)
+        self.hB = [ np.zeros((1,500)),
+                    np.zeros((1,500)),
+                    np.zeros((1,2000)),
+                    np.zeros((1,10))    ]
 
-    def loadPostRBM(self):
-        self.baseDir = 'nnData'
-        baseName = 'ClassifyAfterRBM-Layer%d.mat'
-        self.loadNN(baseName)
+        self.vB = [ np.zeros((1,784)),
+                    np.zeros((1,500)),
+                    np.zeros((1,500)),
+                    np.zeros((1,2000))  ]
 
-    def loadNN(self, baseName):
-        Layer0 = self.loadmat(baseName % (0))
-        Layer1 = self.loadmat(baseName % (1))
-        Layer2 = self.loadmat(baseName % (2))
-        Layer3 = self.loadmat(baseName % (3))
+    def save(self, filename):
+        return sio.savemat(filename, {'W0': self.W[0], 
+                                      'W1': self.W[1],
+                                      'W2': self.W[2],
+                                      'W3': self.W[3],
+                                      'hB0': self.hB[0],
+                                      'hB1': self.hB[1],
+                                      'hB2': self.hB[2],
+                                      'hB3': self.hB[3],
+                                      'vB0': self.vB[0],
+                                      'vB1': self.vB[1],
+                                      'vB2': self.vB[2],
+                                      'vB3': self.vB[3] }, oned_as='row')
 
-        ## W is the synaptic weight matrix
-        self.W = [  Layer0['W'], 
-                    Layer1['W'], 
-                    Layer2['W'], 
-                    Layer3['W']   ]
-
-        ## hB is the hidden biases, ie, the biases of the hidden neurons
-        ##  ("hidden neurons" is a relative term -- it means the neurons that
-        ##   sit atop the current W matrix in question...)
-        self.hB = [  Layer0['hiddenBias'], 
-                     Layer1['hiddenBias'], 
-                     Layer2['hiddenBias'], 
-                     Layer3['hiddenBias']   ]
-
-        ## hB is the visible biases, ie, the biases of the visible neurons
-        ##  ("visible neurons" is a relative term -- it means the neurons that
-        ##   sit below the current W matrix in question...)
-        self.vB = [  Layer0['visibleBias'], 
-                     Layer1['visibleBias'], 
-                     Layer2['visibleBias'], 
-                     Layer3['visibleBias']   ]
-
+    def load(self, filename):
+        myDict = sio.loadmat(filename, struct_as_record=True)
+        self.W = []
+        self.hB = []
+        self.vB = []
+        self.W.append(myDict['W0'])
+        self.W.append(myDict['W1'])
+        self.W.append(myDict['W2'])
+        self.W.append(myDict['W3'])
+        self.hB.append(myDict['hB0'])
+        self.hB.append(myDict['hB1'])
+        self.hB.append(myDict['hB2'])
+        self.hB.append(myDict['hB3'])
+        self.vB.append(myDict['vB0'])
+        self.vB.append(myDict['vB1'])
+        self.vB.append(myDict['vB2'])
+        self.vB.append(myDict['vB3'])
 
     def recognize(self, inputData):
         return self.up3(self.up2(self.up1(self.up0(inputData))))
@@ -127,31 +132,6 @@ class LogisticHinton2006:
     def up3(self, inputData):
         return np.exp( np.dot(inputData, self.W[3]) + self.hB[3])
 
-
-    ## This is the up3() method wrapped for use with the CG-Minimizer:
-    ##  FIXME:  This no worky.
-    def up3cgWrap(self, VV, Dim, inputs, targets):
-        #### Un-Flatten all of our parameters from the 1-D array
-        matrices = multiUnFlatten(VV, Dim)
-        W = matrices[0]
-        hB = matrices[1]
-    
-        nnTargetOut = self.up3(inputs)
-        nnTargetOut = nnTargetOut / np.tile(nnTargetOut.sum(1)[:, np.newaxis], (1,10) )
-    
-        f = -(targets * np.log(nnTargetOut)).sum(0).sum(0)
-    
-        classError = nnTargetOut - targets
-    
-        ## re-stack the gradient into the same shape as VV:
-        (df, Dim2) = multiFlatten((   np.dot(inputs.T, classError),
-                                      classError.sum(0)[:, np.newaxis].T  ))
-        assert Dim == Dim2
-
-        return (f, df[:, 0])
-
-
-
     def down0(self, inputData):
         return 1./(1. + np.exp(-np.dot(inputData, self.W[0].T) - self.vB[0]))
 
@@ -171,8 +151,7 @@ class LogisticHinton2006:
         #### Flatten all of our parameters into a 1-D array
         (VV, Dim) = multiFlatten(( self.W[3], self.hB[3] ))
 
-        (X, fX, iters) = cg.minimize(VV, backprop_only3, (Dim, layer2out, targets), max_iter  )
-        #(X, fX, iters) = minimize.minimize(VV, self.up3cgWrap, (Dim, layer2out, targets), max_iter  )
+        (X, fX, iters) = cg.minimize(VV, backprop_only3, (Dim, layer2out, targets), max_iter)
 
         #### Un-Flatten all of our parameters from the 1-D array
         matrices = multiUnFlatten(X, Dim)
@@ -187,7 +166,7 @@ class LogisticHinton2006:
                                     self.W[2], self.hB[2],
                                     self.W[3], self.hB[3]  ))
 
-        (X, fX, iters) = cg.minimize(VV, backprop, (Dim, inputData, targets), max_iter  )
+        (X, fX, iters) = cg.minimize(VV, backprop, (Dim, inputData, targets), max_iter)
 
         #### Un-Flatten all of our parameters from the 1-D array
         matrices = multiUnFlatten(X, Dim)
@@ -223,7 +202,7 @@ class LogisticHinton2006:
         #### Positive Phase:
         poshidprobs = up(inputData)
         if (randomNumbers == None):
-            randomNumbers = np.random.rand(poshidprobs.shape)
+            randomNumbers = np.random.rand(poshidprobs.shape[0], poshidprobs.shape[1])
         poshidstates = 1 * (poshidprobs > randomNumbers)
         del randomNumbers
         posprods = np.dot(inputData.T, poshidprobs)  #an unbiased sample, <v_i, h_j>_data

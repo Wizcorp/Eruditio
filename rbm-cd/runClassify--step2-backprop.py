@@ -27,19 +27,22 @@ import scipy.io as sio
 
 import NeuralNetwork
 
+nn = NeuralNetwork.LogisticHinton2006()
+# Load the neural network that was created from step1:
+nn.load('nnData/NN_afterPreTrain.mat');
+
 
 #### START:  Load the MNIST training and testing data
+print
 sys.stdout.write("Loading training data...")
 sys.stdout.flush()
 trainData = sio.loadmat('../datasets/MNIST/trainImagesAndTargets.mat', struct_as_record=True)
-sys.stdout.write(" done.\n")
-sys.stdout.flush()
+print " done."
 
 sys.stdout.write("Loading testing data...")
 sys.stdout.flush()
 testData = sio.loadmat('../datasets/MNIST/testImagesAndTargets.mat', struct_as_record=True)
-sys.stdout.write(" done.\n")
-sys.stdout.flush()
+print " done."
 
 trainImages = trainData['images']
 trainTargets = trainData['targets']
@@ -71,12 +74,13 @@ def countErrors(inputData, targets):
 
 def batchCountErrors(allImages, allTargets, numbatches):
     ## Divide the job into batches so that we don't run out of memory
-    #numbatches = 600
-    batchsize = allImages.shape[0] / numbatches
+    ## (Here, batchsize doesn't affect results or CPU time, just memory usage.)
+    numCases = allImages.shape[0]
+    batchsize = numCases / numbatches
     err_cr = 0.
     counter = 0
     for batch in xrange(numbatches):
-        sys.stdout.write("epoch %d,  batch %d (of %d)\r" % (epoch, batch, numbatches))
+        sys.stdout.write("    batch %d (of %d)\r" % (batch, numbatches))
         sys.stdout.flush()
         start = batch * batchsize
         stop = (batch+1) * batchsize
@@ -92,12 +96,23 @@ def batchCountErrors(allImages, allTargets, numbatches):
     sys.stdout.flush()
     t_err = allImages.shape[0] - counter
     t_crerr = err_cr / numbatches
+    percent_error = 100 * float(t_err) / float(numCases)
+
+    print "    Misclassified %d out of %d images.  (%.2f%% error)" % (t_err, numCases, percent_error)
     return t_err, t_crerr
 
 
-nn = NeuralNetwork.LogisticHinton2006()
-nn.loadPostRBM();
+print 
+print "Before doing any backprop:"
 
+print "  Counting the number of mis-classifications in the training set..."
+(pre_train_err, pre_train_crerr) = batchCountErrors(trainImages, trainTargets, 600)
+
+print "  Counting the number of mis-classifications in the test set..."
+(pre_test_err, pre_test_crerr) = batchCountErrors(testImages, testTargets, 100)
+
+print
+print ' === Training model by minimizing cross entropy error === '
 maxepoch=10
 
 test_err = [0]*maxepoch
@@ -105,29 +120,16 @@ train_err = [0]*maxepoch
 test_crerr = [0.]*maxepoch
 train_crerr = [0.]*maxepoch
 for epoch in xrange(maxepoch):
-#    print " ** Epoch", epoch
-#    print "Counting the number of mis-classifications in training set..."
-#    (train_err[epoch], train_crerr[epoch]) = batchCountErrors(trainImages, trainTargets, 600)
- 
-#    print "Counting the number of mis-classifications in test set..."
-#    (test_err[epoch], test_crerr[epoch]) = batchCountErrors(testImages, testTargets, 100)
-
-#    print "Before epoch %d: " % (epoch)
-#    print "  Train # misclassified: %d (from %d)." % (train_err[epoch], numCases)
-#    print "  Test # misclassified: %d (from %d)" % (test_err[epoch], numTestCases)
-#    sys.stdout.flush()
-
+    print "Starting epoch", epoch
     ## Divide the data into 60 batches to save memory
     assert numCases == 60000, "Expecting 60,000 training images."
     numbatches = 60
     batchsize = 1000
     assert batchsize*numbatches == numCases
-    print 'Training discriminative model on MNIST by minimizing cross entropy error.'
-    print '60 batches of 1000 cases each.'
+    print '  %d batches of %d cases each.' % (numbatches, batchsize)
 
     for batch in xrange(numbatches):
-        sys.stdout.write("epoch %d,  batch %d (of %d)\r" % (epoch, batch, numbatches))
-        sys.stdout.flush()
+        print "    batch %d of %d:" % (batch, numbatches)
         start = batch * batchsize
         stop = (batch+1) * batchsize
 
@@ -136,29 +138,19 @@ for epoch in xrange(maxepoch):
 
         ### START:  Conjugate gradient with 3 linesearches
         max_iter = 3
-        # For some epochs, we only update the final layer:
-        # (depending on what kind of mood I'm in...)
-        if (epoch < 2):
-            #nn.minimizeLayer3(data, targets, max_iter)
-            nn.minimizeAllLayers(data, targets, max_iter)
-        elif (epoch == 2):
-            nn.minimizeAllLayers(data, targets, max_iter)
-        elif (epoch < 6):
+
+        if (epoch < 5):  # At first, we only update the final layer
             nn.minimizeLayer3(data, targets, max_iter)
         else:
             nn.minimizeAllLayers(data, targets, max_iter)
 
-
-    print " ** Epoch", epoch
-    print "Counting the number of mis-classifications in training set..."
+    print "After Epoch %d:" % (epoch)
+    print "  Counting the number of mis-classifications in the training set..."
     (train_err[epoch], train_crerr[epoch]) = batchCountErrors(trainImages, trainTargets, 600)
  
-    print "Counting the number of mis-classifications in test set..."
+    print "  Counting the number of mis-classifications in the test set..."
     (test_err[epoch], test_crerr[epoch]) = batchCountErrors(testImages, testTargets, 100)
 
-    print "AFTER epoch %d: " % (epoch)
-    print "  Train # misclassified: %d (from %d)." % (train_err[epoch], numCases)
-    print "  Test # misclassified: %d (from %d)" % (test_err[epoch], numTestCases)
-    sys.stdout.flush()
-
+    print
+    print
 
